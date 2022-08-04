@@ -3676,6 +3676,7 @@ void TR::CompilationInfo::stopCompilationThreads()
          }
       }
 #endif /* defined(J9VM_OPT_JITSERVER) */
+   TR::Region::print_alloc_entry();
    }
 
 void TR::CompilationInfo::stopCompilationThread(CompilationInfoPerThread* compInfoPT)
