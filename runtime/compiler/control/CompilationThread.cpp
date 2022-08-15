@@ -3676,7 +3676,8 @@ void TR::CompilationInfo::stopCompilationThreads()
          }
       }
 #endif /* defined(J9VM_OPT_JITSERVER) */
-   TR::Region::print_alloc_entry();
+   // For region allocation back trace, print allocation backtraces
+   TR::Region::printRegionAllocations();
    }
 
 void TR::CompilationInfo::stopCompilationThread(CompilationInfoPerThread* compInfoPT)

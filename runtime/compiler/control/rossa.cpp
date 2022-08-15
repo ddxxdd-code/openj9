@@ -1823,7 +1823,7 @@ onLoadInternal(
          return -1;
       persistentMemory->getPersistentInfo()->setInvokeExactJ2IThunkTable(ieThunkTable);
       }
-   TR::Region::init_alloc_map_list(&TR::Compiler->persistentAllocator());
+   TR::Region::initAllocMapList(&TR::Compiler->persistentAllocator());
    return 0;
    }
 
