@@ -11250,11 +11250,15 @@ TR::CompilationInfoPerThreadBase::processExceptionCommonTasks(
             " mem=[region=%llu system=%llu]KB",
             static_cast<unsigned long long>(scratchSegmentProvider.regionBytesAllocated())/1024,
             static_cast<unsigned long long>(scratchSegmentProvider.systemBytesAllocated())/1024);
+         TR_VerboseLog::write(" compThreadID=%d", compiler->getCompThreadID());
+         // Add sequenceNumber field for the compilation in the log
+         TR_VerboseLog::writeLine(" CompSeqNum=%d", compiler->getSequenceNumber());
          }
-      TR_VerboseLog::writeLine(" compThreadID=%d", compiler->getCompThreadID());
+      else
+         {
+         TR_VerboseLog::writeLine(" compThreadID=%d", compiler->getCompThreadID());
+         }
       }
-   // Add sequenceNumber field for the compilation in the log
-   TR_VerboseLog::write(" CompSeqNum=%d", compiler->getSequenceNumber());
 
    if(_methodBeingCompiled->_compErrCode == compilationFailure)
       {
