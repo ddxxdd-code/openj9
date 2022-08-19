@@ -10751,8 +10751,6 @@ void TR::CompilationInfoPerThreadBase::logCompilationSuccess(
 
             if (TR::Options::getVerboseOption(TR_VerbosePerformance))
                {
-               // Add sequenceNumber field for the compilation in the log
-               TR_VerboseLog::write(" CompSeqNum=%d", compiler->getSequenceNumber());
                TR_VerboseLog::write(
                   " mem=[region=%llu system=%llu]KB",
                   static_cast<unsigned long long>(scratchSegmentProvider.regionBytesAllocated())/1024,
@@ -10811,7 +10809,8 @@ void TR::CompilationInfoPerThreadBase::logCompilationSuccess(
             // Print total compilation request latency (including queuing time and failed attempts)
             if (TR::Options::getVerboseOption(TR_VerbosePerformance))
                TR_VerboseLog::write(" queueTime=%zuus", currentTime - _methodBeingCompiled->_entryTime);
-
+            // Add sequenceNumber field for the compilation in the log
+            TR_VerboseLog::write(" CompSeqNum=%d", compiler->getSequenceNumber());
             TR_VerboseLog::writeLine("");
             }
 
@@ -11247,14 +11246,14 @@ TR::CompilationInfoPerThreadBase::processExceptionCommonTasks(
 
       if (TR::Options::getVerboseOption(TR_VerbosePerformance))
          {
-         // Add sequenceNumber field for the compilation in the log
-         TR_VerboseLog::write(" CompSeqNum=%d", compiler->getSequenceNumber());
          TR_VerboseLog::write(
             " mem=[region=%llu system=%llu]KB",
             static_cast<unsigned long long>(scratchSegmentProvider.regionBytesAllocated())/1024,
             static_cast<unsigned long long>(scratchSegmentProvider.systemBytesAllocated())/1024);
          }
       TR_VerboseLog::writeLine(" compThreadID=%d", compiler->getCompThreadID());
+      // Add sequenceNumber field for the compilation in the log
+      TR_VerboseLog::write(" CompSeqNum=%d", compiler->getSequenceNumber());
       }
 
    if(_methodBeingCompiled->_compErrCode == compilationFailure)
