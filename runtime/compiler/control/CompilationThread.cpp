@@ -10751,6 +10751,8 @@ void TR::CompilationInfoPerThreadBase::logCompilationSuccess(
 
             if (TR::Options::getVerboseOption(TR_VerbosePerformance))
                {
+               // Add sequenceNumber field for the compilation in the log
+               TR_VerboseLog::write(" CompSeqNum=%d", compiler->getSequenceNumber());
                TR_VerboseLog::write(
                   " mem=[region=%llu system=%llu]KB",
                   static_cast<unsigned long long>(scratchSegmentProvider.regionBytesAllocated())/1024,
@@ -11245,6 +11247,8 @@ TR::CompilationInfoPerThreadBase::processExceptionCommonTasks(
 
       if (TR::Options::getVerboseOption(TR_VerbosePerformance))
          {
+         // Add sequenceNumber field for the compilation in the log
+         TR_VerboseLog::write(" CompSeqNum=%d", compiler->getSequenceNumber());
          TR_VerboseLog::write(
             " mem=[region=%llu system=%llu]KB",
             static_cast<unsigned long long>(scratchSegmentProvider.regionBytesAllocated())/1024,
