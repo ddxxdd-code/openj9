@@ -11252,9 +11252,9 @@ TR::CompilationInfoPerThreadBase::processExceptionCommonTasks(
             static_cast<unsigned long long>(scratchSegmentProvider.systemBytesAllocated())/1024);
          }
       TR_VerboseLog::writeLine(" compThreadID=%d", compiler->getCompThreadID());
-      // Add sequenceNumber field for the compilation in the log
-      TR_VerboseLog::write(" CompSeqNum=%d", compiler->getSequenceNumber());
       }
+   // Add sequenceNumber field for the compilation in the log
+   TR_VerboseLog::write(" CompSeqNum=%d", compiler->getSequenceNumber());
 
    if(_methodBeingCompiled->_compErrCode == compilationFailure)
       {
