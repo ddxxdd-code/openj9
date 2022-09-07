@@ -45,6 +45,7 @@ public:
    size_t systemBytesAllocated() const throw();
    size_t regionBytesAllocated() const throw();
    size_t bytesAllocated() const throw();
+   size_t regionBytesInUse() const throw();
    size_t allocationLimit() const throw();
    void setAllocationLimit(size_t allocationLimit);
    bool isLargeSegment(size_t segmentSize);
@@ -60,6 +61,7 @@ private:
    size_t _allocationLimit;
    size_t _systemBytesAllocated;
    size_t _regionBytesAllocated;
+   size_t _regionBytesInUse;
    J9::J9SegmentProvider & _systemSegmentAllocator;
 
    typedef TR::typed_allocator<
