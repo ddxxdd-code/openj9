@@ -30,6 +30,7 @@ J9::SystemSegmentProvider::SystemSegmentProvider(size_t defaultSegmentSize, size
    _systemBytesAllocated(0),
    _regionBytesAllocated(0),
    _regionBytesInUse(0),
+   _regionRealBytesInUse(0),
    _systemSegmentAllocator(segmentAllocator),
    _systemSegments( SystemSegmentDequeAllocator(rawAllocator) ),
    _segments(std::less< TR::MemorySegment >(), SegmentSetAllocator(rawAllocator)),
@@ -88,7 +89,9 @@ J9::SystemSegmentProvider::request(size_t requiredSize)
       TR::MemorySegment &recycledSegment = *_freeSegments;
       _freeSegments = &recycledSegment.unlink();
       recycledSegment.reset();
-      _regionBytesInUse += recycledSegment.size();
+      size_t segmentSize = recycledSegment.size();
+      _regionBytesInUse += segmentSize;
+      _regionRealBytesInUse += segmentSize;
       return recycledSegment;
       }
 
@@ -168,6 +171,7 @@ J9::SystemSegmentProvider::release(TR::MemorySegment & segment) throw()
          segment.link(*_freeSegments);
          _freeSegments = &segment;
          _regionBytesInUse -= segmentSize;
+         _regionRealBytesInUse -= segmentSize;
          }
       catch (...)
          {
@@ -185,6 +189,7 @@ J9::SystemSegmentProvider::release(TR::MemorySegment & segment) throw()
             _regionBytesAllocated -= segmentSize;
             _systemBytesAllocated -= segmentSize;
             _regionBytesInUse -= segmentSize;
+            _regionRealBytesInUse -= segmentSize;
 
             /* Removing segment from _segments */
             auto it = _segments.find(segment);
@@ -214,6 +219,7 @@ J9::SystemSegmentProvider::release(TR::MemorySegment & segment) throw()
       /* Removing segment from _segments */
       auto it = _segments.find(segment);
       _segments.erase(it);
+      _regionRealBytesInUse -= segmentSize;
       }
    }
 
@@ -241,6 +247,12 @@ J9::SystemSegmentProvider::regionBytesInUse() const throw()
    return _regionBytesInUse;
    }
 
+size_t
+J9::SystemSegmentProvider::regionRealBytesInUse() const throw()
+   {
+   return _regionRealBytesInUse;
+   }
+
 TR::MemorySegment &
 J9::SystemSegmentProvider::allocateNewSegment(size_t size, TR::reference_wrapper<J9MemorySegment> systemSegment)
    {
@@ -252,6 +264,7 @@ J9::SystemSegmentProvider::allocateNewSegment(size_t size, TR::reference_wrapper
       TR::MemorySegment &newSegment = createSegmentFromArea(size, newSegmentArea);
       _regionBytesAllocated += size;
       _regionBytesInUse += size;
+      _regionRealBytesInUse += size;
       return newSegment;
       }
    catch (...)
