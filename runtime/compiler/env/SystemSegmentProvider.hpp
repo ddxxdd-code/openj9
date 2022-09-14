@@ -40,7 +40,7 @@ class SystemSegmentProvider : public TR::SegmentAllocator
 public:
    SystemSegmentProvider(size_t defaultSegmentSize, size_t systemSegmentSize, size_t allocationLimit, J9::J9SegmentProvider &segmentAllocator, TR::RawAllocator rawAllocator);
    ~SystemSegmentProvider() throw();
-   virtual TR::MemorySegment &request(size_t requiredSize);
+   virtual TR::MemorySegment &request(size_t requiredSize, bool inRegion=false);
    virtual void release(TR::MemorySegment &segment) throw();
    size_t systemBytesAllocated() const throw();
    size_t regionBytesAllocated() const throw();
