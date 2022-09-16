@@ -78,9 +78,13 @@ J9::SystemSegmentProvider::isLargeSegment(size_t segmentSize)
    }
 
 TR::MemorySegment &
-J9::SystemSegmentProvider::request(size_t requiredSize)
+J9::SystemSegmentProvider::request(size_t requiredSize, bool inRegion)
    {
    size_t const roundedSize = round(requiredSize);
+   if (!inRegion) 
+      {
+      printf("Request outside of region of %zu Bytes\n", roundedSize);
+      }
    if (
       _freeSegments != &_freeSegmentsEmpty
       && !(defaultSegmentSize() < roundedSize)
