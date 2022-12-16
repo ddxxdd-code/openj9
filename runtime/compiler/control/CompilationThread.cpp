@@ -100,6 +100,7 @@
 #include "env/J9SegmentCache.hpp"
 #include "env/SystemSegmentProvider.hpp"
 #include "env/DebugSegmentProvider.hpp"
+#include "env/RegionLog.hpp"
 #if defined(J9VM_OPT_JITSERVER)
 #include "control/JITClientCompilationThread.hpp"
 #include "control/JITServerCompilationThread.hpp"
@@ -3957,6 +3958,21 @@ void TR::CompilationInfo::stopCompilationThreads()
          }
       }
 #endif /* defined(J9VM_OPT_JITSERVER) */
+   // check if there is any compilation logged in the global list, if so, dump the contents
+   if (TR::Options::_collectRegionLog && TR::Options::_compilationRegionLogFileName)
+      {
+      FILE *regionLogOutFile = J9::IO::fopen(TR::Options::_compilationRegionLogFileName, "w");
+      TR_ASSERT(regionLogOutFile != NULL, "error in opening file %s for dumping region logs\n", TR::Options::_compilationRegionLogFileName);
+      if (J9::SystemSegmentProvider::_globalCompilationsList)
+         {
+         for (auto &compilation : *J9::SystemSegmentProvider::_globalCompilationsList)
+            {
+            J9::IO::fprintf(regionLogOutFile, "Compilation %zu, Memory usage: %zu, Method: %s, Optimization Level: %zu\n", compilation.compilationNumber, compilation.totalMemoryUsed, compilation.methodName, compilation.optLevel);
+            RegionLog::printRegionLogList(compilation.regionLogList, regionLogOutFile);
+            }
+         }
+      J9::IO::fclose(regionLogOutFile);
+      }
    }
 
 void TR::CompilationInfo::stopCompilationThread(CompilationInfoPerThread* compInfoPT)
@@ -8430,6 +8446,13 @@ TR::CompilationInfoPerThreadBase::compile(J9VMThread * vmThread,
          TR::Options::getCmdLineOptions()->getOption(TR_EnableScratchMemoryDebugging) ?
             static_cast<TR::SegmentAllocator &>(debugSegmentProvider) :
             static_cast<TR::SegmentAllocator &>(defaultSegmentProvider);
+      // Here is the point before any region is created
+      if (TR::Options::_collectRegionLog && entry->_optimizationPlan->getOptLevel() >= TR::Options::_minOptLevelCollectRegionLog)
+         {
+         regionSegmentProvider.setCollectRegionLog();  // TODO: add method to set method to be compiled and optLevel to segment providers to write these fields.
+         regionSegmentProvider.setMethodBeingCompiled(entry->getMethodDetails().name(), entry->_optimizationPlan->getOptLevel());
+         }
+
       TR::Region dispatchRegion(regionSegmentProvider, rawAllocator);
 
       // Initialize JITServer's trMemory with per-client persistent memory, since

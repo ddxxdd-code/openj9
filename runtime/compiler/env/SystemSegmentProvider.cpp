@@ -20,15 +20,31 @@
  * SPDX-License-Identifier: EPL-2.0 OR Apache-2.0 OR GPL-2.0-only WITH Classpath-exception-2.0 OR GPL-2.0-only WITH OpenJDK-assembly-exception-1.0
  *******************************************************************************/
 
+#include "AtomicSupport.hpp"
 #include "SystemSegmentProvider.hpp"
 #include "env/MemorySegment.hpp"
+#include "control/J9Options.hpp"
+#include "control/Options.hpp"
+#include "infra/CriticalSection.hpp"
+#include <stdio.h>
 #include <algorithm>
+#include <vector>
+#include <tuple>
+
+size_t J9::SystemSegmentProvider::_globalCompilationSequenceNumber = 0;
+TR::Monitor *J9::SystemSegmentProvider::_regionLogListMonitor = NULL;
+PersistentVector<struct CompilationInfo> *J9::SystemSegmentProvider::_globalCompilationsList = new (PERSISTENT_NEW) PersistentVector<struct CompilationInfo>(PersistentVector<struct CompilationInfo>::allocator_type(TR::Compiler->persistentAllocator()));
 
 J9::SystemSegmentProvider::SystemSegmentProvider(size_t defaultSegmentSize, size_t systemSegmentSize, size_t allocationLimit, J9::J9SegmentProvider &segmentAllocator, TR::RawAllocator rawAllocator) :
    SegmentAllocator(defaultSegmentSize),
    _allocationLimit(allocationLimit),
+   _recordRegions(false),
    _systemBytesAllocated(0),
    _regionBytesAllocated(0),
+   _regionBytesInUse(0),
+   _regionRealBytesInUse(0),
+   _regionLogListHead(NULL),
+   _regionLogListTail(NULL),
    _systemSegmentAllocator(segmentAllocator),
    _systemSegments( SystemSegmentDequeAllocator(rawAllocator) ),
    _segments(std::less< TR::MemorySegment >(), SegmentSetAllocator(rawAllocator)),
@@ -57,10 +73,24 @@ J9::SystemSegmentProvider::SystemSegmentProvider(size_t defaultSegmentSize, size
       throw;
       }
    _systemBytesAllocated += _systemSegmentSize;
+
+   // log this segment provider
+   _compilationSequenceNumber = VM_AtomicSupport::addU64(&_globalCompilationSequenceNumber, 1);
    }
 
 J9::SystemSegmentProvider::~SystemSegmentProvider() throw()
    {
+
+   // put this segment provider if needed
+   if (_recordRegions && _regionBytesAllocated > TR::Options::_minMemoryUsageCollectRegionLog)
+      {
+      // we collect by insert into global list
+      _compilation.compilationNumber = _compilationSequenceNumber;
+      _compilation.totalMemoryUsed = _regionBytesAllocated;
+      _compilation.regionLogList = _regionLogListHead;
+      _globalCompilationsList->push_back(_compilation);
+      }
+
    while (!_systemSegments.empty())
       {
       J9MemorySegment &topSegment = _systemSegments.back().get();
@@ -87,6 +117,8 @@ J9::SystemSegmentProvider::request(size_t requiredSize)
       TR::MemorySegment &recycledSegment = *_freeSegments;
       _freeSegments = &recycledSegment.unlink();
       recycledSegment.reset();
+      _regionBytesInUse += roundedSize;
+      _regionRealBytesInUse += roundedSize;
       return recycledSegment;
       }
 
@@ -165,6 +197,8 @@ J9::SystemSegmentProvider::release(TR::MemorySegment & segment) throw()
          {
          segment.link(*_freeSegments);
          _freeSegments = &segment;
+         _regionBytesInUse -= segmentSize;
+         _regionRealBytesInUse -= segmentSize;
          }
       catch (...)
          {
@@ -181,6 +215,8 @@ J9::SystemSegmentProvider::release(TR::MemorySegment & segment) throw()
             {
             _regionBytesAllocated -= segmentSize;
             _systemBytesAllocated -= segmentSize;
+            _regionBytesInUse -= segmentSize;
+            _regionRealBytesInUse -= segmentSize;
 
             /* Removing segment from _segments */
             auto it = _segments.find(segment);
@@ -210,6 +246,7 @@ J9::SystemSegmentProvider::release(TR::MemorySegment & segment) throw()
       /* Removing segment from _segments */
       auto it = _segments.find(segment);
       _segments.erase(it);
+      _regionRealBytesInUse -= segmentSize;
       }
    }
 
@@ -231,6 +268,18 @@ J9::SystemSegmentProvider::bytesAllocated() const throw()
    return _regionBytesAllocated;
    }
 
+size_t
+J9::SystemSegmentProvider::regionBytesInUse()
+   {
+   return _regionBytesInUse;
+   }
+
+size_t
+J9::SystemSegmentProvider::regionRealBytesInUse()
+   {
+   return _regionRealBytesInUse;
+   }
+
 TR::MemorySegment &
 J9::SystemSegmentProvider::allocateNewSegment(size_t size, TR::reference_wrapper<J9MemorySegment> systemSegment)
    {
@@ -241,6 +290,8 @@ J9::SystemSegmentProvider::allocateNewSegment(size_t size, TR::reference_wrapper
       {
       TR::MemorySegment &newSegment = createSegmentFromArea(size, newSegmentArea);
       _regionBytesAllocated += size;
+      _regionBytesInUse += size;
+      _regionRealBytesInUse += size;
       return newSegment;
       }
    catch (...)
@@ -281,4 +332,42 @@ ptrdiff_t
 J9::SystemSegmentProvider::remaining(const J9MemorySegment &memorySegment)
    {
    return memorySegment.heapTop - memorySegment.heapAlloc;
+   }
+
+void 
+J9::SystemSegmentProvider::setMethodBeingCompiled(const char *methodName, TR_Hotness optLevel) 
+   {
+   size_t methodNameLength = strlen(methodName);
+   _compilation.methodName = new char[methodNameLength + 1];
+   strncpy(_compilation.methodName, methodName, methodNameLength + 1);
+   _compilation.methodName[methodNameLength] = '\0';
+   _compilation.optLevel = optLevel;
+   }
+
+void
+J9::SystemSegmentProvider::segmentProviderRegionLogListInsert(RegionLog *regionLog) 
+   {
+   if (!_regionLogListMonitor)
+      {
+      createRegionLogListMonitor();
+      }
+   OMR::CriticalSection criticalSection(_regionLogListMonitor);
+   RegionLog::regionLogListInsert(&_regionLogListHead, &_regionLogListTail, regionLog);
+   }
+   
+void 
+J9::SystemSegmentProvider::segmentProviderRegionLogListRemove(RegionLog *regionLog) 
+   {
+   if (!_regionLogListMonitor)
+      {
+      createRegionLogListMonitor();
+      }
+   OMR::CriticalSection criticalSection(_regionLogListMonitor);
+   RegionLog::regionLogListRemove(&_regionLogListHead, &_regionLogListTail, regionLog);
+   }
+
+void 
+J9::SystemSegmentProvider::createRegionLogListMonitor() 
+   {
+   _regionLogListMonitor = TR::Monitor::create("RegionLogCriticalSectionMonitor");
    }
