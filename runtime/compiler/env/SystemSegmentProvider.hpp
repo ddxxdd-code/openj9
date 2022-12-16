@@ -25,6 +25,7 @@
 
 #include <set>
 #include <deque>
+#include <stdio.h>
 #include "env/SegmentAllocator.hpp"
 #include "env/MemorySegment.hpp"
 
@@ -32,6 +33,36 @@
 #include "env/TypedAllocator.hpp"
 #include "infra/ReferenceWrapper.hpp"
 #include "env/RawAllocator.hpp"
+
+class regionLog
+   {
+   public:
+   regionLog *_next;
+   void printRegionLog(FILE *file);
+   };  // forward declaration of reginLog for list of regionlogs maintained in a segment provider
+
+// printRegionLogList of regionLogs after one head pointer. 
+// In the end, all regions in a compilation will be collected in a double linked list of regionLogs and the head and tail maintained in segment provider.
+// On destruction of a segment provider, dump results/insert the list to global list
+void printRegionLogList(regionLog *head, FILE *file)
+   {
+   while (head)
+      {
+      head->printRegionLog(file);
+      head = head->_next;
+      }
+   }
+
+// print all inserted compilations
+void printAllCompilations(FILE *file)
+   {
+   if (!_globalCompilationsList) return;
+   for (auto &compilation : *_globalCompilationsList)
+      {
+      fprintf(file, "Compilation %d, Memory usage: %zu\n", std::get<0>(compilation), std::get<1>(compilation));
+      printRegionLogList(std::get<2>(compilation), file);
+      }
+   }
 
 namespace J9 {
 
@@ -45,9 +76,22 @@ public:
    size_t systemBytesAllocated() const throw();
    size_t regionBytesAllocated() const throw();
    size_t bytesAllocated() const throw();
+   // new counters added
+   size_t regionBytesInUse() const throw();
+   size_t regionRealBytesInUse() const throw();
    size_t allocationLimit() const throw();
    void setAllocationLimit(size_t allocationLimit);
    bool isLargeSegment(size_t segmentSize);
+   // set to collect in a segment provider
+   void setCollectRegionLog() { _collectRegionLog = true; }
+
+   uint32_t recordEvent() { return ++_timestamp; }    // called on creation and destructor of region
+   bool collectRegions() { return _recordRegions; }   // called in constructor of region to check if region should be allocated
+   // head and tail for the double linked list for regionlogs.
+   regionLog *_regionLogListHead = NULL;
+   regionLog *_regionLogListTail = NULL;
+
+   static std::vector<std::tuple<uint32_t, size_t, regionLog *>> *_globalCompilationsList = NULL;  // list of all compilations, <compilation number, bytesAllocated, list of regionLog>
 
 private:
    size_t round(size_t requestedSize);
@@ -60,6 +104,8 @@ private:
    size_t _allocationLimit;
    size_t _systemBytesAllocated;
    size_t _regionBytesAllocated;
+   size_t _regionBytesInUse;
+   size_t _regionRealBytesInUse;
    J9::J9SegmentProvider & _systemSegmentAllocator;
 
    typedef TR::typed_allocator<
@@ -91,6 +137,13 @@ private:
    // and is to be released when the release method is invoked, e.g. when a TR::Region
    // goes out of scope. Thus _currentSystemSegment is not allowed to hold such segment.
    TR::reference_wrapper<J9MemorySegment> _currentSystemSegment;
+
+   // Flag for if we record regions
+   bool _recordRegions = false;
+   // Counters to track regions in a compilation
+   uint32_t _timestamp = 0;
+   uint32_t _compilationSequenceNumber = 0;
+   static uint32_t _globalCompilationSequenceNumber = 0;
 
    };
 

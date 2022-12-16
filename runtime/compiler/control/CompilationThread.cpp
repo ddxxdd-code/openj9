@@ -8180,6 +8180,12 @@ TR::CompilationInfoPerThreadBase::compile(J9VMThread * vmThread,
          TR::Options::getCmdLineOptions()->getOption(TR_EnableScratchMemoryDebugging) ?
             static_cast<TR::SegmentAllocator &>(debugSegmentProvider) :
             static_cast<TR::SegmentAllocator &>(defaultSegmentProvider);
+      // Here is the point before any region is created
+      if (J9::Options::_collectRegionLog && entry->_optimizationPlan->getOptLevel() >= J9::Options::_minOptLevelCollectRegionLog)
+         {
+         regionSegmentProvider.setCollectRegionLog();
+         }
+
       TR::Region dispatchRegion(regionSegmentProvider, rawAllocator);
 
       // Initialize JITServer's trMemory with per-client persistent memory, since
@@ -8311,6 +8317,19 @@ TR::CompilationInfoPerThreadBase::compile(J9VMThread * vmThread,
 
    vmThread->omrVMThread->vmState = oldState;
    vmThread->jitMethodToBeCompiled = NULL;
+
+   // check if there is any compilation logged in the global list, if so, dump the contents
+   if (J9::Options::_collectRegionLog && J9::Options::_compilationRegionLogFileName)
+      {
+      FILE *regionLogOutFile = fopen(J9::Options::_compilationRegionLogFileName, "w+");
+      if (!regionLogOutFile)
+         {
+         printf("error in opening file %s for dumping region logs\n", J9::Options::_compilationRegionLogFileName);
+         return startPC;
+         }
+      printAllCompilations(regionLogOutFile);
+      fclose(regionLogOutFile);
+      }
 
    return startPC;
    }

@@ -29,6 +29,8 @@ J9::SystemSegmentProvider::SystemSegmentProvider(size_t defaultSegmentSize, size
    _allocationLimit(allocationLimit),
    _systemBytesAllocated(0),
    _regionBytesAllocated(0),
+   _regionBytesInUse(0),
+   _regionRealBytesInUse(0),
    _systemSegmentAllocator(segmentAllocator),
    _systemSegments( SystemSegmentDequeAllocator(rawAllocator) ),
    _segments(std::less< TR::MemorySegment >(), SegmentSetAllocator(rawAllocator)),
@@ -57,6 +59,11 @@ J9::SystemSegmentProvider::SystemSegmentProvider(size_t defaultSegmentSize, size
       throw;
       }
    _systemBytesAllocated += _systemSegmentSize;
+
+   // log this segment provider
+   _globalCompilationSequenceNumber += 1;
+   _compilationSequenceNumber = _globalCompilationSequenceNumber;
+   // TODO: remember to set the collection or not flag in this compilation in compilation thread
    }
 
 J9::SystemSegmentProvider::~SystemSegmentProvider() throw()
@@ -66,6 +73,13 @@ J9::SystemSegmentProvider::~SystemSegmentProvider() throw()
       J9MemorySegment &topSegment = _systemSegments.back().get();
       _systemSegments.pop_back();
       _systemSegmentAllocator.release(topSegment);
+      }
+   
+   // put this sehment provider if needed
+   if (_recordRegions && _regionBytesAllocated > J9::Options::_minMemoryUsageCollectRegionLog)
+      {
+      // we collect by insert into global list
+      _globalCompilationsList.insert(std::make_tuple(_compilationSequenceNumber, _regionBytesAllocated, _regionLogListHead));
       }
    }
 
@@ -87,6 +101,8 @@ J9::SystemSegmentProvider::request(size_t requiredSize)
       TR::MemorySegment &recycledSegment = *_freeSegments;
       _freeSegments = &recycledSegment.unlink();
       recycledSegment.reset();
+      _regionBytesInUse += segmentSize;
+      _regionRealBytesInUse += segmentSize;
       return recycledSegment;
       }
 
@@ -165,6 +181,8 @@ J9::SystemSegmentProvider::release(TR::MemorySegment & segment) throw()
          {
          segment.link(*_freeSegments);
          _freeSegments = &segment;
+         _regionBytesInUse -= segmentSize;
+         _regionRealBytesInUse -= segmentSize;
          }
       catch (...)
          {
@@ -181,6 +199,8 @@ J9::SystemSegmentProvider::release(TR::MemorySegment & segment) throw()
             {
             _regionBytesAllocated -= segmentSize;
             _systemBytesAllocated -= segmentSize;
+            _regionBytesInUse -= segmentSize;
+            _regionRealBytesInUse -= segmentSize;
 
             /* Removing segment from _segments */
             auto it = _segments.find(segment);
@@ -210,6 +230,7 @@ J9::SystemSegmentProvider::release(TR::MemorySegment & segment) throw()
       /* Removing segment from _segments */
       auto it = _segments.find(segment);
       _segments.erase(it);
+      _regionRealBytesInUse -= segmentSize;
       }
    }
 
@@ -231,6 +252,18 @@ J9::SystemSegmentProvider::bytesAllocated() const throw()
    return _regionBytesAllocated;
    }
 
+size_t
+J9::SystemSegmentProvider::regionBytesInUse() const throw()
+   {
+   return _regionBytesInUse;
+   }
+
+size_t
+J9::SystemSegmentProvider::regionRealBytesInUse() const throw()
+   {
+   return _regionRealBytesInUse;
+   }
+
 TR::MemorySegment &
 J9::SystemSegmentProvider::allocateNewSegment(size_t size, TR::reference_wrapper<J9MemorySegment> systemSegment)
    {
@@ -241,6 +274,8 @@ J9::SystemSegmentProvider::allocateNewSegment(size_t size, TR::reference_wrapper
       {
       TR::MemorySegment &newSegment = createSegmentFromArea(size, newSegmentArea);
       _regionBytesAllocated += size;
+      _regionBytesInUse += size;
+      _regionRealBytesInUse += size;
       return newSegment;
       }
    catch (...)
