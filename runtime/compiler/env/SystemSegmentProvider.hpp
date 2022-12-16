@@ -48,6 +48,23 @@ public:
    size_t allocationLimit() const throw();
    void setAllocationLimit(size_t allocationLimit);
    bool isLargeSegment(size_t segmentSize);
+   // set to collect in a segment provider
+   void setCollectRegionLog() { _recordRegions = true; }
+   void setMethodBeingCompiled(const char *methodName, TR_Hotness optLevel);
+
+   // Call on creation and destructor of region
+   int recordEvent() { return ++_timestamp; }
+   // Call in constructor of region to check if region should be allocated    
+   bool collectRegions() { return _recordRegions; }   
+   
+   // Head and tail for the double linked list for regionlogs.
+   void segmentProviderRegionLogListInsert(RegionLog *regionLog);
+   void segmentProviderRegionLogListRemove(RegionLog *regionLog);
+
+   // List of all compilations
+   static PersistentVector<struct CompilationInfo> *_globalCompilationsList;
+   static size_t _globalCompilationSequenceNumber;
+   static TR::Monitor *_regionLogListMonitor;
 
 private:
    size_t round(size_t requestedSize);

@@ -874,6 +874,10 @@ TR::OptionTable OMR::Options::_feOptions[] = {
         TR::Options::setJitConfigNumericValue, offsetof(J9JITConfig, codeCachePadKB), 0, "F%d (KB)"},
    {"codetotal=",              "C<nnn>\ttotal code memory limit, in KB",
         TR::Options::setJitConfigNumericValue, offsetof(J9JITConfig, codeCacheTotalKB), 0, "F%d (KB)"},
+   // Set this to enable collection of region log
+   {"collectRegionLog",               " \tcollect region log in compilations",
+        TR::Options::setStaticBool, (intptr_t)&TR::Options::_collectRegionLog, 1, "F%d", NOT_IN_SUBSET},
+   
    {"compilationBudget=",      "O<nnn>\tnumber of usec. Used to better interleave compilation"
                                "with computation. Use 80000 as a starting point",
         TR::Options::setStaticNumeric, (intptr_t)&TR::Options::_compilationBudget, 0, "P%d", NOT_IN_SUBSET},
@@ -886,6 +890,10 @@ TR::OptionTable OMR::Options::_feOptions[] = {
         TR::Options::setStaticNumeric, (intptr_t)&TR::Options::_compPriorityQSZThreshold , 0, "F%d", NOT_IN_SUBSET},
    {"compilationQueueSizeLimit=", "R<nnn>\tWhen limit is reached, first-time compilations are postponed by replenishing the invocation count",
         TR::Options::setStaticNumeric, (intptr_t)&TR::Options::_qszLimit, 0, "F%d", NOT_IN_SUBSET},
+   // Option to set dump file name
+   {"compilationRegionLogFileName=",              "L<filename>\twrite region logs to filename_compilation_seq_num",
+        TR::Options::setStaticString,  (intptr_t)(&TR::Options::_compilationRegionLogFileName), 0, "P%s", NOT_IN_SUBSET},
+   
    {"compilationThreadAffinityMask=", "M<nnn>\taffinity mask for compilation threads. Use hexa without 0x",
         TR::Options::setStaticHexadecimal, (intptr_t)&TR::Options::_compThreadAffinityMask, 0, "F%d", NOT_IN_SUBSET},
    {"compilationYieldStatsHeartbeatPeriod=", "M<nnn>\tperiodically print stats about compilation yield points "
@@ -1080,6 +1088,13 @@ TR::OptionTable OMR::Options::_feOptions[] = {
         TR::Options::setStaticNumeric, (intptr_t)&TR::Options::_maxCheckcastProfiledClassTests, 0, "F%d", NOT_IN_SUBSET},
    {"maxOnsiteCacheSlotForInstanceOf=", "R<nnn>\tnumber of onsite cache slots for instanceOf",
       TR::Options::setStaticNumeric, (intptr_t)&TR::Options::_maxOnsiteCacheSlotForInstanceOf, 0, "F%d", NOT_IN_SUBSET},
+   
+   // Smallest memory usage in a region for a region to be collected, default = 16384
+   {"minMemoryCollectRegionLog=", "D<nnn>\tsmallest memory usage to enable collection of region log of this compilation",
+      TR::Options::setStaticNumeric, (intptr_t)&TR::Options::_minMemoryUsageCollectRegionLog, 16384, "F%d", NOT_IN_SUBSET},
+   {"minOptLevelCollectRegionLog=", "D<nnn>\tsmallest level of optimization to enable collection of region log of this compilation",
+      TR::Options::setStaticNumeric, (intptr_t)&TR::Options::_minOptLevelCollectRegionLog, 0, "F%d", NOT_IN_SUBSET},
+
    {"minSamplingPeriod=", "R<nnn>\tminimum number of milliseconds between samples for hotness",
         TR::Options::setStaticNumeric, (intptr_t)&TR::Options::_minSamplingPeriod, 0, "P%d", NOT_IN_SUBSET},
    {"minSuperclassArraySize=", "I<nnn>\t set the size of the minimum superclass array size",

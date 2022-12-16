@@ -57,10 +57,24 @@ J9::SystemSegmentProvider::SystemSegmentProvider(size_t defaultSegmentSize, size
       throw;
       }
    _systemBytesAllocated += _systemSegmentSize;
+
+   // Log this segment provider
+   _compilationSequenceNumber = VM_AtomicSupport::addU64(&_globalCompilationSequenceNumber, 1);
    }
 
 J9::SystemSegmentProvider::~SystemSegmentProvider() throw()
    {
+
+   // Put this segment provider if needed
+   if (_recordRegions && _regionBytesAllocated > TR::Options::_minMemoryUsageCollectRegionLog)
+      {
+      // We collect by insert into global list
+      _compilation.compilationNumber = _compilationSequenceNumber;
+      _compilation.totalMemoryUsed = _regionBytesAllocated;
+      _compilation.regionLogList = _regionLogListHead;
+      _globalCompilationsList->push_back(_compilation);
+      }
+
    while (!_systemSegments.empty())
       {
       J9MemorySegment &topSegment = _systemSegments.back().get();
@@ -281,4 +295,42 @@ ptrdiff_t
 J9::SystemSegmentProvider::remaining(const J9MemorySegment &memorySegment)
    {
    return memorySegment.heapTop - memorySegment.heapAlloc;
+   }
+
+void 
+J9::SystemSegmentProvider::setMethodBeingCompiled(const char *methodName, TR_Hotness optLevel) 
+   {
+   size_t methodNameLength = strlen(methodName);
+   _compilation.methodName = new char[methodNameLength + 1];
+   strncpy(_compilation.methodName, methodName, methodNameLength + 1);
+   _compilation.methodName[methodNameLength] = '\0';
+   _compilation.optLevel = optLevel;
+   }
+
+void
+J9::SystemSegmentProvider::segmentProviderRegionLogListInsert(RegionLog *regionLog) 
+   {
+   if (!_regionLogListMonitor)
+      {
+      createRegionLogListMonitor();
+      }
+   OMR::CriticalSection criticalSection(_regionLogListMonitor);
+   RegionLog::regionLogListInsert(&_regionLogListHead, &_regionLogListTail, regionLog);
+   }
+   
+void 
+J9::SystemSegmentProvider::segmentProviderRegionLogListRemove(RegionLog *regionLog) 
+   {
+   if (!_regionLogListMonitor)
+      {
+      createRegionLogListMonitor();
+      }
+   OMR::CriticalSection criticalSection(_regionLogListMonitor);
+   RegionLog::regionLogListRemove(&_regionLogListHead, &_regionLogListTail, regionLog);
+   }
+
+void 
+J9::SystemSegmentProvider::createRegionLogListMonitor() 
+   {
+   _regionLogListMonitor = TR::Monitor::create("RegionLogCriticalSectionMonitor");
    }
