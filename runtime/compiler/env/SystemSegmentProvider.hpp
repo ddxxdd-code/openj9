@@ -34,17 +34,17 @@
 #include "infra/ReferenceWrapper.hpp"
 #include "env/RawAllocator.hpp"
 
-class regionLog
+class RegionLog
    {
    public:
-   regionLog *_next;
+   RegionLog *_next;
    void printRegionLog(FILE *file);
    };  // forward declaration of reginLog for list of regionlogs maintained in a segment provider
 
 // printRegionLogList of regionLogs after one head pointer. 
 // In the end, all regions in a compilation will be collected in a double linked list of regionLogs and the head and tail maintained in segment provider.
 // On destruction of a segment provider, dump results/insert the list to global list
-void printRegionLogList(regionLog *head, FILE *file)
+void printRegionLogList(RegionLog *head, FILE *file)
    {
    while (head)
       {
@@ -88,10 +88,10 @@ public:
    uint32_t recordEvent() { return ++_timestamp; }    // called on creation and destructor of region
    bool collectRegions() { return _recordRegions; }   // called in constructor of region to check if region should be allocated
    // head and tail for the double linked list for regionlogs.
-   regionLog *_regionLogListHead = NULL;
-   regionLog *_regionLogListTail = NULL;
+   RegionLog *_regionLogListHead = NULL;
+   RegionLog *_regionLogListTail = NULL;
 
-   static std::vector<std::tuple<uint32_t, size_t, regionLog *>> *_globalCompilationsList = NULL;  // list of all compilations, <compilation number, bytesAllocated, list of regionLog>
+   static std::vector<std::tuple<uint32_t, size_t, RegionLog *>> *_globalCompilationsList = NULL;  // list of all compilations, <compilation number, bytesAllocated, list of regionLog>
 
 private:
    size_t round(size_t requestedSize);
