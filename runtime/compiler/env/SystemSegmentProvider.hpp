@@ -26,6 +26,8 @@
 #include <set>
 #include <deque>
 #include <stdio.h>
+#include <cstdint>
+#include <vector>
 #include "env/SegmentAllocator.hpp"
 #include "env/MemorySegment.hpp"
 
@@ -34,35 +36,7 @@
 #include "infra/ReferenceWrapper.hpp"
 #include "env/RawAllocator.hpp"
 
-class RegionLog
-   {
-   public:
-   RegionLog *_next;
-   void printRegionLog(FILE *file);
-   };  // forward declaration of reginLog for list of regionlogs maintained in a segment provider
-
-// printRegionLogList of regionLogs after one head pointer. 
-// In the end, all regions in a compilation will be collected in a double linked list of regionLogs and the head and tail maintained in segment provider.
-// On destruction of a segment provider, dump results/insert the list to global list
-void printRegionLogList(RegionLog *head, FILE *file)
-   {
-   while (head)
-      {
-      head->printRegionLog(file);
-      head = head->_next;
-      }
-   }
-
-// print all inserted compilations
-void printAllCompilations(FILE *file)
-   {
-   if (!_globalCompilationsList) return;
-   for (auto &compilation : *_globalCompilationsList)
-      {
-      fprintf(file, "Compilation %d, Memory usage: %zu\n", std::get<0>(compilation), std::get<1>(compilation));
-      printRegionLogList(std::get<2>(compilation), file);
-      }
-   }
+class RegionLog;
 
 namespace J9 {
 
@@ -83,15 +57,18 @@ public:
    void setAllocationLimit(size_t allocationLimit);
    bool isLargeSegment(size_t segmentSize);
    // set to collect in a segment provider
-   void setCollectRegionLog() { _collectRegionLog = true; }
+   void setCollectRegionLog() { _recordRegions = true; }
 
    uint32_t recordEvent() { return ++_timestamp; }    // called on creation and destructor of region
    bool collectRegions() { return _recordRegions; }   // called in constructor of region to check if region should be allocated
+   // static void printAllCompilations(FILE *file); // print all inserted compilations
+   
    // head and tail for the double linked list for regionlogs.
    RegionLog *_regionLogListHead = NULL;
    RegionLog *_regionLogListTail = NULL;
 
-   static std::vector<std::tuple<uint32_t, size_t, RegionLog *>> *_globalCompilationsList = NULL;  // list of all compilations, <compilation number, bytesAllocated, list of regionLog>
+   static std::vector<std::tuple<uint32_t, size_t, RegionLog *>> *_globalCompilationsList;  // list of all compilations, <compilation number, bytesAllocated, list of regionLog>
+   static uint32_t _globalCompilationSequenceNumber;
 
 private:
    size_t round(size_t requestedSize);
@@ -143,7 +120,6 @@ private:
    // Counters to track regions in a compilation
    uint32_t _timestamp = 0;
    uint32_t _compilationSequenceNumber = 0;
-   static uint32_t _globalCompilationSequenceNumber = 0;
 
    };
 

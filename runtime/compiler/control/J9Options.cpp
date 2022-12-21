@@ -288,7 +288,7 @@ bool J9::Options::_aggressiveLockReservation = false;
 
 // Options and values for regionlog dump
 bool J9::Options::_collectRegionLog = false;
-bool J9::Options::_compilationRegionLogFileName = NULL;
+char *J9::Options::_compilationRegionLogFileName = NULL;
 uint64_t J9::Options::_minMemoryUsageCollectRegionLog = 16384;
 uint32_t J9::Options::_minOptLevelCollectRegionLog = 0;
 
