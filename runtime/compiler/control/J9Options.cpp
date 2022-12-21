@@ -377,7 +377,7 @@ char * J9::Options::_externalOptionStrings[J9::ExternalOptions::TR_NumExternalOp
 
 // Options and constant values used in scratch memory profiler
 bool J9::Options::_collectRegionLog = false;
-bool J9::Options::_compilationRegionLogFileName = NULL;
+char *J9::Options::_compilationRegionLogFileName = NULL;
 uint64_t J9::Options::_minMemoryUsageCollectRegionLog = 16384;
 uint32_t J9::Options::_minOptLevelCollectRegionLog = 0;
 

@@ -22,7 +22,13 @@
 
 #include "SystemSegmentProvider.hpp"
 #include "env/MemorySegment.hpp"
+#include "control/J9Options.hpp"
 #include <algorithm>
+#include <vector>
+#include <tuple>
+
+uint32_t J9::SystemSegmentProvider::_globalCompilationSequenceNumber = 0;
+std::vector<std::tuple<uint32_t, size_t, RegionLog *>> *J9::SystemSegmentProvider::_globalCompilationsList = new std::vector<std::tuple<uint32_t, size_t, RegionLog *>>;
 
 J9::SystemSegmentProvider::SystemSegmentProvider(size_t defaultSegmentSize, size_t systemSegmentSize, size_t allocationLimit, J9::J9SegmentProvider &segmentAllocator, TR::RawAllocator rawAllocator) :
    SegmentAllocator(defaultSegmentSize),
@@ -79,7 +85,7 @@ J9::SystemSegmentProvider::~SystemSegmentProvider() throw()
    if (_recordRegions && _regionBytesAllocated > J9::Options::_minMemoryUsageCollectRegionLog)
       {
       // we collect by insert into global list
-      _globalCompilationsList.insert(std::make_tuple(_compilationSequenceNumber, _regionBytesAllocated, _regionLogListHead));
+      _globalCompilationsList->push_back(std::make_tuple(_compilationSequenceNumber, _regionBytesAllocated, _regionLogListHead));
       }
    }
 
@@ -101,8 +107,8 @@ J9::SystemSegmentProvider::request(size_t requiredSize)
       TR::MemorySegment &recycledSegment = *_freeSegments;
       _freeSegments = &recycledSegment.unlink();
       recycledSegment.reset();
-      _regionBytesInUse += segmentSize;
-      _regionRealBytesInUse += segmentSize;
+      _regionBytesInUse += roundedSize;
+      _regionRealBytesInUse += roundedSize;
       return recycledSegment;
       }
 

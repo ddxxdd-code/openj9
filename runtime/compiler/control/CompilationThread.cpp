@@ -100,6 +100,7 @@
 #include "env/J9SegmentCache.hpp"
 #include "env/SystemSegmentProvider.hpp"
 #include "env/DebugSegmentProvider.hpp"
+#include "env/RegionLog.hpp"
 #if defined(J9VM_OPT_JITSERVER)
 #include "control/JITClientCompilationThread.hpp"
 #include "control/JITServerCompilationThread.hpp"
@@ -3957,6 +3958,26 @@ void TR::CompilationInfo::stopCompilationThreads()
          }
       }
 #endif /* defined(J9VM_OPT_JITSERVER) */
+   // check if there is any compilation logged in the global list, if so, dump the contents
+   if (J9::Options::_collectRegionLog && J9::Options::_compilationRegionLogFileName)
+      {
+      std::FILE *regionLogOutFile = fopen(J9::Options::_compilationRegionLogFileName, "w+");
+      if (!regionLogOutFile)
+         {
+         printf("error in opening file %s for dumping region logs\n", J9::Options::_compilationRegionLogFileName);
+         return;
+         }
+      // TR::Region::printAllCompilations(J9::SystemSegmentProvider::_globalCompilationsList, regionLogOutFile);
+      if (J9::SystemSegmentProvider::_globalCompilationsList)
+         {
+         for (auto &compilation : *J9::SystemSegmentProvider::_globalCompilationsList)
+            {
+            fprintf(regionLogOutFile, "Compilation %d, Memory usage: %zu\n", std::get<0>(compilation), std::get<1>(compilation));
+            RegionLog::printRegionLogList(std::get<2>(compilation), regionLogOutFile);
+            }
+         }
+      fclose(regionLogOutFile);
+      }
    }
 
 void TR::CompilationInfo::stopCompilationThread(CompilationInfoPerThread* compInfoPT)
@@ -8566,18 +8587,6 @@ TR::CompilationInfoPerThreadBase::compile(J9VMThread * vmThread,
    vmThread->omrVMThread->vmState = oldState;
    vmThread->jitMethodToBeCompiled = NULL;
 
-   // check if there is any compilation logged in the global list, if so, dump the contents
-   if (J9::Options::_collectRegionLog && J9::Options::_compilationRegionLogFileName)
-      {
-      FILE *regionLogOutFile = fopen(J9::Options::_compilationRegionLogFileName, "w+");
-      if (!regionLogOutFile)
-         {
-         printf("error in opening file %s for dumping region logs\n", J9::Options::_compilationRegionLogFileName);
-         return startPC;
-         }
-      printAllCompilations(regionLogOutFile);
-      fclose(regionLogOutFile);
-      }
 
    return startPC;
    }
