@@ -377,7 +377,7 @@ char * J9::Options::_externalOptionStrings[J9::ExternalOptions::TR_NumExternalOp
 
 // Options and constant values used in scratch memory profiler
 bool J9::Options::_collectRegionLog = false;
-char *J9::Options::_compilationRegionLogFileName = NULL;
+char *J9::Options::_compilationRegionLogFileName = "alloctrace.log";
 uint64_t J9::Options::_minMemoryUsageCollectRegionLog = 16384;
 uint32_t J9::Options::_minOptLevelCollectRegionLog = 0;
 
@@ -898,7 +898,7 @@ TR::OptionTable OMR::Options::_feOptions[] = {
         TR::Options::setStaticNumeric, (intptr_t)&TR::Options::_qszLimit, 0, "F%d", NOT_IN_SUBSET},
    // option to set dump regionb log file name
    {"compilationRegionLogFileName=",              "L<filename>\twrite region logs to filename_compilation_seq_num",
-        TR::Options::setString,  (intptr_t)(&TR::Options::_compilationRegionLogFileName), 0, "P%s"},
+        TR::Options::setStaticString,  (intptr_t)(&TR::Options::_compilationRegionLogFileName), 0, "P%s"},
    
    {"compilationThreadAffinityMask=", "M<nnn>\taffinity mask for compilation threads. Use hexa without 0x",
         TR::Options::setStaticHexadecimal, (intptr_t)&TR::Options::_compThreadAffinityMask, 0, "F%d", NOT_IN_SUBSET},

@@ -23,6 +23,7 @@
 #include "SystemSegmentProvider.hpp"
 #include "env/MemorySegment.hpp"
 #include "control/J9Options.hpp"
+#include <stdio.h>
 #include <algorithm>
 #include <vector>
 #include <tuple>
@@ -33,10 +34,13 @@ std::vector<std::tuple<uint32_t, size_t, RegionLog *>> *J9::SystemSegmentProvide
 J9::SystemSegmentProvider::SystemSegmentProvider(size_t defaultSegmentSize, size_t systemSegmentSize, size_t allocationLimit, J9::J9SegmentProvider &segmentAllocator, TR::RawAllocator rawAllocator) :
    SegmentAllocator(defaultSegmentSize),
    _allocationLimit(allocationLimit),
+   _recordRegions(false),
    _systemBytesAllocated(0),
    _regionBytesAllocated(0),
    _regionBytesInUse(0),
    _regionRealBytesInUse(0),
+   _regionLogListHead(NULL),
+   _regionLogListTail(NULL),
    _systemSegmentAllocator(segmentAllocator),
    _systemSegments( SystemSegmentDequeAllocator(rawAllocator) ),
    _segments(std::less< TR::MemorySegment >(), SegmentSetAllocator(rawAllocator)),
@@ -69,23 +73,23 @@ J9::SystemSegmentProvider::SystemSegmentProvider(size_t defaultSegmentSize, size
    // log this segment provider
    _globalCompilationSequenceNumber += 1;
    _compilationSequenceNumber = _globalCompilationSequenceNumber;
-   // TODO: remember to set the collection or not flag in this compilation in compilation thread
    }
 
 J9::SystemSegmentProvider::~SystemSegmentProvider() throw()
    {
+
+   // put this segment provider if needed
+   if (_recordRegions && _regionBytesAllocated > J9::Options::_minMemoryUsageCollectRegionLog)
+      {
+      // we collect by insert into global list
+      _globalCompilationsList->push_back(std::make_tuple(_compilationSequenceNumber, _regionBytesAllocated, _regionLogListHead));
+      }
+
    while (!_systemSegments.empty())
       {
       J9MemorySegment &topSegment = _systemSegments.back().get();
       _systemSegments.pop_back();
       _systemSegmentAllocator.release(topSegment);
-      }
-   
-   // put this sehment provider if needed
-   if (_recordRegions && _regionBytesAllocated > J9::Options::_minMemoryUsageCollectRegionLog)
-      {
-      // we collect by insert into global list
-      _globalCompilationsList->push_back(std::make_tuple(_compilationSequenceNumber, _regionBytesAllocated, _regionLogListHead));
       }
    }
 

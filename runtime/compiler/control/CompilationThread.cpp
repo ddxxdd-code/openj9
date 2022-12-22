@@ -3964,7 +3964,7 @@ void TR::CompilationInfo::stopCompilationThreads()
       std::FILE *regionLogOutFile = fopen(J9::Options::_compilationRegionLogFileName, "w+");
       if (!regionLogOutFile)
          {
-         printf("error in opening file %s for dumping region logs\n", J9::Options::_compilationRegionLogFileName);
+         fprintf(stderr, "error in opening file %s for dumping region logs\n", J9::Options::_compilationRegionLogFileName);
          return;
          }
       // TR::Region::printAllCompilations(J9::SystemSegmentProvider::_globalCompilationsList, regionLogOutFile);

@@ -61,11 +61,10 @@ public:
 
    uint32_t recordEvent() { return ++_timestamp; }    // called on creation and destructor of region
    bool collectRegions() { return _recordRegions; }   // called in constructor of region to check if region should be allocated
-   // static void printAllCompilations(FILE *file); // print all inserted compilations
    
    // head and tail for the double linked list for regionlogs.
-   RegionLog *_regionLogListHead = NULL;
-   RegionLog *_regionLogListTail = NULL;
+   RegionLog **getRegionLogListHead() { return &_regionLogListHead; };
+   RegionLog **getRegionLogListTail() { return &_regionLogListTail; };
 
    static std::vector<std::tuple<uint32_t, size_t, RegionLog *>> *_globalCompilationsList;  // list of all compilations, <compilation number, bytesAllocated, list of regionLog>
    static uint32_t _globalCompilationSequenceNumber;
@@ -116,10 +115,13 @@ private:
    TR::reference_wrapper<J9MemorySegment> _currentSystemSegment;
 
    // Flag for if we record regions
-   bool _recordRegions = false;
+   bool _recordRegions;
    // Counters to track regions in a compilation
-   uint32_t _timestamp = 0;
-   uint32_t _compilationSequenceNumber = 0;
+   uint32_t _timestamp;
+   uint32_t _compilationSequenceNumber;
+
+   RegionLog *_regionLogListHead;
+   RegionLog *_regionLogListTail;
 
    };
 
