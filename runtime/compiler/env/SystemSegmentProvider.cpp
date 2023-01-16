@@ -31,7 +31,6 @@
 #include <tuple>
 
 size_t J9::SystemSegmentProvider::_globalCompilationSequenceNumber = 0;
-// PersistentVector<std::tuple<size_t, size_t, RegionLog *>> *J9::SystemSegmentProvider::_globalCompilationsList = new (PERSISTENT_NEW) PersistentVector<std::tuple<size_t, size_t, RegionLog *>>(PersistentVector<std::tuple<size_t, size_t, RegionLog *>>::allocator_type(TR::Compiler->persistentAllocator()));
 PersistentVector<struct CompilationInfo> *J9::SystemSegmentProvider::_globalCompilationsList = new (PERSISTENT_NEW) PersistentVector<struct CompilationInfo>(PersistentVector<struct CompilationInfo>::allocator_type(TR::Compiler->persistentAllocator()));
 
 J9::SystemSegmentProvider::SystemSegmentProvider(size_t defaultSegmentSize, size_t systemSegmentSize, size_t allocationLimit, J9::J9SegmentProvider &segmentAllocator, TR::RawAllocator rawAllocator) :
