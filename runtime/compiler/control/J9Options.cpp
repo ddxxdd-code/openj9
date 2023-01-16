@@ -19,7 +19,7 @@
  *
  * SPDX-License-Identifier: EPL-2.0 OR Apache-2.0 OR GPL-2.0-only WITH Classpath-exception-2.0 OR GPL-2.0-only WITH OpenJDK-assembly-exception-1.0
  *******************************************************************************/
- 
+
 #include "control/J9Options.hpp"
 
 #include <algorithm>
@@ -882,7 +882,7 @@ TR::OptionTable OMR::Options::_feOptions[] = {
         TR::Options::setJitConfigNumericValue, offsetof(J9JITConfig, codeCacheTotalKB), 0, "F%d (KB)"},
    // set this to enable collection of region log
    {"collectRegionLog",               " \tcollect region log in compilations",
-        TR::Options::setStaticBool, (intptr_t)&TR::Options::_collectRegionLog, 1, "F%d"},
+        TR::Options::setStaticBool, (intptr_t)&TR::Options::_collectRegionLog, 1, "F%d", NOT_IN_SUBSET},
    
    {"compilationBudget=",      "O<nnn>\tnumber of usec. Used to better interleave compilation"
                                "with computation. Use 80000 as a starting point",
@@ -898,7 +898,7 @@ TR::OptionTable OMR::Options::_feOptions[] = {
         TR::Options::setStaticNumeric, (intptr_t)&TR::Options::_qszLimit, 0, "F%d", NOT_IN_SUBSET},
    // option to set dump regionb log file name
    {"compilationRegionLogFileName=",              "L<filename>\twrite region logs to filename_compilation_seq_num",
-        TR::Options::setStaticString,  (intptr_t)(&TR::Options::_compilationRegionLogFileName), 0, "P%s"},
+        TR::Options::setStaticString,  (intptr_t)(&TR::Options::_compilationRegionLogFileName), 0, "P%s", NOT_IN_SUBSET},
    
    {"compilationThreadAffinityMask=", "M<nnn>\taffinity mask for compilation threads. Use hexa without 0x",
         TR::Options::setStaticHexadecimal, (intptr_t)&TR::Options::_compThreadAffinityMask, 0, "F%d", NOT_IN_SUBSET},

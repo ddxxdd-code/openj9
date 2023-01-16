@@ -30,6 +30,7 @@
 #include <vector>
 #include "env/SegmentAllocator.hpp"
 #include "env/MemorySegment.hpp"
+#include "env/PersistentCollections.hpp"
 
 #include "env/J9SegmentAllocator.hpp"
 #include "env/TypedAllocator.hpp"
@@ -37,6 +38,15 @@
 #include "env/RawAllocator.hpp"
 
 class RegionLog;
+
+struct CompilationInfo 
+   {
+   char methodName[64];
+   size_t optLevel;
+   size_t compilationNumber;
+   size_t totalMemoryUsed;
+   RegionLog *regionLogList;
+   };
 
 namespace J9 {
 
@@ -51,23 +61,24 @@ public:
    size_t regionBytesAllocated() const throw();
    size_t bytesAllocated() const throw();
    // new counters added
-   size_t regionBytesInUse() const throw();
-   size_t regionRealBytesInUse() const throw();
+   size_t regionBytesInUse();
+   size_t regionRealBytesInUse();
    size_t allocationLimit() const throw();
    void setAllocationLimit(size_t allocationLimit);
    bool isLargeSegment(size_t segmentSize);
    // set to collect in a segment provider
    void setCollectRegionLog() { _recordRegions = true; }
+   void setMethodBeingCompiled(const char *methodName, size_t optLevel);
 
-   uint32_t recordEvent() { return ++_timestamp; }    // called on creation and destructor of region
+   int recordEvent() { return ++_timestamp; }    // called on creation and destructor of region
    bool collectRegions() { return _recordRegions; }   // called in constructor of region to check if region should be allocated
    
    // head and tail for the double linked list for regionlogs.
-   RegionLog **getRegionLogListHead() { return &_regionLogListHead; };
-   RegionLog **getRegionLogListTail() { return &_regionLogListTail; };
+   void segmentProviderRegionLogListInsert(RegionLog *regionLog);
+   void segmentProviderRegionLogListRemove(RegionLog *regionLog);
 
-   static std::vector<std::tuple<uint32_t, size_t, RegionLog *>> *_globalCompilationsList;  // list of all compilations, <compilation number, bytesAllocated, list of regionLog>
-   static uint32_t _globalCompilationSequenceNumber;
+   static PersistentVector<struct CompilationInfo> *_globalCompilationsList;  // list of all compilations, <compilation number, bytesAllocated, list of regionLog>
+   static size_t _globalCompilationSequenceNumber;
 
 private:
    size_t round(size_t requestedSize);
@@ -117,8 +128,9 @@ private:
    // Flag for if we record regions
    bool _recordRegions;
    // Counters to track regions in a compilation
-   uint32_t _timestamp;
-   uint32_t _compilationSequenceNumber;
+   int _timestamp;
+   size_t _compilationSequenceNumber;
+   struct CompilationInfo _compilation;
 
    RegionLog *_regionLogListHead;
    RegionLog *_regionLogListTail;

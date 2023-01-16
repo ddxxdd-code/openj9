@@ -3959,24 +3959,19 @@ void TR::CompilationInfo::stopCompilationThreads()
       }
 #endif /* defined(J9VM_OPT_JITSERVER) */
    // check if there is any compilation logged in the global list, if so, dump the contents
-   if (J9::Options::_collectRegionLog && J9::Options::_compilationRegionLogFileName)
+   if (TR::Options::_collectRegionLog && TR::Options::_compilationRegionLogFileName)
       {
-      std::FILE *regionLogOutFile = fopen(J9::Options::_compilationRegionLogFileName, "w+");
-      if (!regionLogOutFile)
-         {
-         fprintf(stderr, "error in opening file %s for dumping region logs\n", J9::Options::_compilationRegionLogFileName);
-         return;
-         }
-      // TR::Region::printAllCompilations(J9::SystemSegmentProvider::_globalCompilationsList, regionLogOutFile);
+      FILE *regionLogOutFile = J9::IO::fopen(TR::Options::_compilationRegionLogFileName, "w+");
+      TR_ASSERT(regionLogOutFile != NULL, "error in opening file %s for dumping region logs\n", TR::Options::_compilationRegionLogFileName);
       if (J9::SystemSegmentProvider::_globalCompilationsList)
          {
          for (auto &compilation : *J9::SystemSegmentProvider::_globalCompilationsList)
             {
-            fprintf(regionLogOutFile, "Compilation %d, Memory usage: %zu\n", std::get<0>(compilation), std::get<1>(compilation));
-            RegionLog::printRegionLogList(std::get<2>(compilation), regionLogOutFile);
+            J9::IO::fprintf(regionLogOutFile, "Compilation %zu, Memory usage: %zu, Method: %s, Optimization Level: %zu\n", compilation.compilationNumber, compilation.totalMemoryUsed, compilation.methodName, compilation.optLevel);
+            RegionLog::printRegionLogList(compilation.regionLogList, regionLogOutFile);
             }
          }
-      fclose(regionLogOutFile);
+      J9::IO::fclose(regionLogOutFile);
       }
    }
 
@@ -8452,9 +8447,10 @@ TR::CompilationInfoPerThreadBase::compile(J9VMThread * vmThread,
             static_cast<TR::SegmentAllocator &>(debugSegmentProvider) :
             static_cast<TR::SegmentAllocator &>(defaultSegmentProvider);
       // Here is the point before any region is created
-      if (J9::Options::_collectRegionLog && entry->_optimizationPlan->getOptLevel() >= J9::Options::_minOptLevelCollectRegionLog)
+      if (TR::Options::_collectRegionLog && entry->_optimizationPlan->getOptLevel() >= TR::Options::_minOptLevelCollectRegionLog)
          {
-         regionSegmentProvider.setCollectRegionLog();
+         regionSegmentProvider.setCollectRegionLog();  // TODO: add method to set method to be compiled and optLevel to segment providers to write these fields.
+         regionSegmentProvider.setMethodBeingCompiled(entry->getMethodDetails().name(), entry->_optimizationPlan->getOptLevel());
          }
 
       TR::Region dispatchRegion(regionSegmentProvider, rawAllocator);
@@ -8586,7 +8582,6 @@ TR::CompilationInfoPerThreadBase::compile(J9VMThread * vmThread,
 
    vmThread->omrVMThread->vmState = oldState;
    vmThread->jitMethodToBeCompiled = NULL;
-
 
    return startPC;
    }
