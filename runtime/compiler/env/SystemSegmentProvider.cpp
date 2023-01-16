@@ -20,16 +20,19 @@
  * SPDX-License-Identifier: EPL-2.0 OR Apache-2.0 OR GPL-2.0 WITH Classpath-exception-2.0 OR LicenseRef-GPL-2.0 WITH Assembly-exception
  *******************************************************************************/
 
+#include "AtomicSupport.hpp"
 #include "SystemSegmentProvider.hpp"
 #include "env/MemorySegment.hpp"
 #include "control/J9Options.hpp"
+#include "control/Options.hpp"
 #include <stdio.h>
 #include <algorithm>
 #include <vector>
 #include <tuple>
 
-uint32_t J9::SystemSegmentProvider::_globalCompilationSequenceNumber = 0;
-std::vector<std::tuple<uint32_t, size_t, RegionLog *>> *J9::SystemSegmentProvider::_globalCompilationsList = new std::vector<std::tuple<uint32_t, size_t, RegionLog *>>;
+size_t J9::SystemSegmentProvider::_globalCompilationSequenceNumber = 0;
+// PersistentVector<std::tuple<size_t, size_t, RegionLog *>> *J9::SystemSegmentProvider::_globalCompilationsList = new (PERSISTENT_NEW) PersistentVector<std::tuple<size_t, size_t, RegionLog *>>(PersistentVector<std::tuple<size_t, size_t, RegionLog *>>::allocator_type(TR::Compiler->persistentAllocator()));
+PersistentVector<struct CompilationInfo> *J9::SystemSegmentProvider::_globalCompilationsList = new (PERSISTENT_NEW) PersistentVector<struct CompilationInfo>(PersistentVector<struct CompilationInfo>::allocator_type(TR::Compiler->persistentAllocator()));
 
 J9::SystemSegmentProvider::SystemSegmentProvider(size_t defaultSegmentSize, size_t systemSegmentSize, size_t allocationLimit, J9::J9SegmentProvider &segmentAllocator, TR::RawAllocator rawAllocator) :
    SegmentAllocator(defaultSegmentSize),
@@ -71,18 +74,20 @@ J9::SystemSegmentProvider::SystemSegmentProvider(size_t defaultSegmentSize, size
    _systemBytesAllocated += _systemSegmentSize;
 
    // log this segment provider
-   _globalCompilationSequenceNumber += 1;
-   _compilationSequenceNumber = _globalCompilationSequenceNumber;
+   _compilationSequenceNumber = VM_AtomicSupport::addU64(&_globalCompilationSequenceNumber, 1);
    }
 
 J9::SystemSegmentProvider::~SystemSegmentProvider() throw()
    {
 
    // put this segment provider if needed
-   if (_recordRegions && _regionBytesAllocated > J9::Options::_minMemoryUsageCollectRegionLog)
+   if (_recordRegions && _regionBytesAllocated > TR::Options::_minMemoryUsageCollectRegionLog)
       {
       // we collect by insert into global list
-      _globalCompilationsList->push_back(std::make_tuple(_compilationSequenceNumber, _regionBytesAllocated, _regionLogListHead));
+      _compilation.compilationNumber = _compilationSequenceNumber;
+      _compilation.totalMemoryUsed = _regionBytesAllocated;
+      _compilation.regionLogList = _regionLogListHead;
+      _globalCompilationsList->push_back(_compilation);
       }
 
    while (!_systemSegments.empty())
@@ -263,13 +268,13 @@ J9::SystemSegmentProvider::bytesAllocated() const throw()
    }
 
 size_t
-J9::SystemSegmentProvider::regionBytesInUse() const throw()
+J9::SystemSegmentProvider::regionBytesInUse()
    {
    return _regionBytesInUse;
    }
 
 size_t
-J9::SystemSegmentProvider::regionRealBytesInUse() const throw()
+J9::SystemSegmentProvider::regionRealBytesInUse()
    {
    return _regionRealBytesInUse;
    }
@@ -326,4 +331,24 @@ ptrdiff_t
 J9::SystemSegmentProvider::remaining(const J9MemorySegment &memorySegment)
    {
    return memorySegment.heapTop - memorySegment.heapAlloc;
+   }
+
+void 
+J9::SystemSegmentProvider::setMethodBeingCompiled(const char *methodName, size_t optLevel) 
+   {
+   strncpy(_compilation.methodName, methodName, 63);
+   _compilation.methodName[63] = '\0';
+   _compilation.optLevel = optLevel;
+   }
+
+void
+J9::SystemSegmentProvider::segmentProviderRegionLogListInsert(RegionLog *regionLog) 
+   {
+   RegionLog::regionLogListInsert(&_regionLogListHead, &_regionLogListTail, regionLog);
+   }
+   
+void 
+J9::SystemSegmentProvider::segmentProviderRegionLogListRemove(RegionLog *regionLog) 
+   {
+   RegionLog::regionLogListRemove(&_regionLogListHead, &_regionLogListTail, regionLog);
    }
