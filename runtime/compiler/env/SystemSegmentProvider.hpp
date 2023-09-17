@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include <cstdint>
 #include <vector>
+#include "control/OptimizationPlan.hpp"
 #include "env/SegmentAllocator.hpp"
 #include "env/MemorySegment.hpp"
 #include "env/PersistentCollections.hpp"
@@ -38,11 +39,12 @@
 #include "env/RawAllocator.hpp"
 
 class RegionLog;
+namespace TR { class Monitor; }
 
 struct CompilationInfo 
    {
-   char methodName[64];
-   size_t optLevel;
+   char *methodName;
+   TR_Hotness optLevel;
    size_t compilationNumber;
    size_t totalMemoryUsed;
    RegionLog *regionLogList;
@@ -68,7 +70,7 @@ public:
    bool isLargeSegment(size_t segmentSize);
    // set to collect in a segment provider
    void setCollectRegionLog() { _recordRegions = true; }
-   void setMethodBeingCompiled(const char *methodName, size_t optLevel);
+   void setMethodBeingCompiled(const char *methodName, TR_Hotness optLevel);
 
    int recordEvent() { return ++_timestamp; }    // called on creation and destructor of region
    bool collectRegions() { return _recordRegions; }   // called in constructor of region to check if region should be allocated
@@ -79,12 +81,14 @@ public:
 
    static PersistentVector<struct CompilationInfo> *_globalCompilationsList;  // list of all compilations, <compilation number, bytesAllocated, list of regionLog>
    static size_t _globalCompilationSequenceNumber;
+   static TR::Monitor *_regionLogListMonitor;
 
 private:
    size_t round(size_t requestedSize);
    ptrdiff_t remaining(const J9MemorySegment &memorySegment);
    TR::MemorySegment &allocateNewSegment(size_t size, TR::reference_wrapper<J9MemorySegment> systemSegment);
    TR::MemorySegment &createSegmentFromArea(size_t size, void * segmentArea);
+   void createRegionLogListMonitor();
 
    // _systemSegmentSize is only to be written once in the constructor
    size_t _systemSegmentSize;

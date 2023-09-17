@@ -3961,7 +3961,7 @@ void TR::CompilationInfo::stopCompilationThreads()
    // check if there is any compilation logged in the global list, if so, dump the contents
    if (TR::Options::_collectRegionLog && TR::Options::_compilationRegionLogFileName)
       {
-      FILE *regionLogOutFile = J9::IO::fopen(TR::Options::_compilationRegionLogFileName, "w+");
+      FILE *regionLogOutFile = J9::IO::fopen(TR::Options::_compilationRegionLogFileName, "w");
       TR_ASSERT(regionLogOutFile != NULL, "error in opening file %s for dumping region logs\n", TR::Options::_compilationRegionLogFileName);
       if (J9::SystemSegmentProvider::_globalCompilationsList)
          {
