@@ -375,6 +375,8 @@ set_source_files_properties(
 	GENERATED TRUE
 )
 
+target_link_libraries(j9jit PRIVATE unwind)
+
 if(OMR_OS_LINUX)
 	set_property(TARGET j9jit APPEND_STRING PROPERTY
 		LINK_FLAGS " -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/build/scripts/j9jit.linux.exp")

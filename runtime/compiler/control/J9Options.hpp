@@ -340,6 +340,12 @@ class OMR_EXTENSIBLE Options : public OMR::OptionsConnector
 
    static bool _aggressiveLockReservation;
 
+   // Options for dumping regionlog of each compilation
+   static bool       _collectRegionLog;
+   static char *     _compilationRegionLogFileName;
+   static uint64_t   _minMemoryUsageCollectRegionLog;
+   static uint32_t   _minOptLevelCollectRegionLog;
+
    static void  printPID();
 
 
