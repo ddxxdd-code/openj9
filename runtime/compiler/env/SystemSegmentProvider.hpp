@@ -71,15 +71,17 @@ public:
    // set to collect in a segment provider
    void setCollectRegionLog() { _recordRegions = true; }
    void setMethodBeingCompiled(const char *methodName, TR_Hotness optLevel);
-
-   int recordEvent() { return ++_timestamp; }    // called on creation and destructor of region
-   bool collectRegions() { return _recordRegions; }   // called in constructor of region to check if region should be allocated
+   // Call on creation and destructor of region
+   int recordEvent() { return ++_timestamp; }
+   // Call in constructor of region to check if region should be allocated    
+   bool collectRegions() { return _recordRegions; }   
    
-   // head and tail for the double linked list for regionlogs.
+   // Head and tail for the double linked list for regionlogs.
    void segmentProviderRegionLogListInsert(RegionLog *regionLog);
    void segmentProviderRegionLogListRemove(RegionLog *regionLog);
 
-   static PersistentVector<struct CompilationInfo> *_globalCompilationsList;  // list of all compilations, <compilation number, bytesAllocated, list of regionLog>
+   // List of all compilations
+   static PersistentVector<struct CompilationInfo> *_globalCompilationsList;
    static size_t _globalCompilationSequenceNumber;
    static TR::Monitor *_regionLogListMonitor;
 

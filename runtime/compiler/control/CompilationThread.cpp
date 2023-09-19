@@ -8446,10 +8446,12 @@ TR::CompilationInfoPerThreadBase::compile(J9VMThread * vmThread,
          TR::Options::getCmdLineOptions()->getOption(TR_EnableScratchMemoryDebugging) ?
             static_cast<TR::SegmentAllocator &>(debugSegmentProvider) :
             static_cast<TR::SegmentAllocator &>(defaultSegmentProvider);
-      // Here is the point before any region is created
+
+      // Scratch memory profiler only colllect memory usage when collection is set 
+      // and optimization level is high.
       if (TR::Options::_collectRegionLog && entry->_optimizationPlan->getOptLevel() >= TR::Options::_minOptLevelCollectRegionLog)
          {
-         regionSegmentProvider.setCollectRegionLog();  // TODO: add method to set method to be compiled and optLevel to segment providers to write these fields.
+         regionSegmentProvider.setCollectRegionLog();
          regionSegmentProvider.setMethodBeingCompiled(entry->getMethodDetails().name(), entry->_optimizationPlan->getOptLevel());
          }
 

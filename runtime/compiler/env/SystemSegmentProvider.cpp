@@ -73,18 +73,16 @@ J9::SystemSegmentProvider::SystemSegmentProvider(size_t defaultSegmentSize, size
       throw;
       }
    _systemBytesAllocated += _systemSegmentSize;
-
-   // log this segment provider
+   // Log this segment provider
    _compilationSequenceNumber = VM_AtomicSupport::addU64(&_globalCompilationSequenceNumber, 1);
    }
 
 J9::SystemSegmentProvider::~SystemSegmentProvider() throw()
    {
-
-   // put this segment provider if needed
+   // Put this segment provider if needed
    if (_recordRegions && _regionBytesAllocated > TR::Options::_minMemoryUsageCollectRegionLog)
       {
-      // we collect by insert into global list
+      // We collect by insert into global list
       _compilation.compilationNumber = _compilationSequenceNumber;
       _compilation.totalMemoryUsed = _regionBytesAllocated;
       _compilation.regionLogList = _regionLogListHead;

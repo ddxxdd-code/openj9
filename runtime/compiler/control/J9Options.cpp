@@ -880,7 +880,7 @@ TR::OptionTable OMR::Options::_feOptions[] = {
         TR::Options::setJitConfigNumericValue, offsetof(J9JITConfig, codeCachePadKB), 0, "F%d (KB)"},
    {"codetotal=",              "C<nnn>\ttotal code memory limit, in KB",
         TR::Options::setJitConfigNumericValue, offsetof(J9JITConfig, codeCacheTotalKB), 0, "F%d (KB)"},
-   // set this to enable collection of region log
+   // Set this to enable collection of region log
    {"collectRegionLog",               " \tcollect region log in compilations",
         TR::Options::setStaticBool, (intptr_t)&TR::Options::_collectRegionLog, 1, "F%d", NOT_IN_SUBSET},
    
@@ -896,7 +896,7 @@ TR::OptionTable OMR::Options::_feOptions[] = {
         TR::Options::setStaticNumeric, (intptr_t)&TR::Options::_compPriorityQSZThreshold , 0, "F%d", NOT_IN_SUBSET},
    {"compilationQueueSizeLimit=", "R<nnn>\tWhen limit is reached, first-time compilations are postponed by replenishing the invocation count",
         TR::Options::setStaticNumeric, (intptr_t)&TR::Options::_qszLimit, 0, "F%d", NOT_IN_SUBSET},
-   // option to set dump regionb log file name
+   // Option to set dump file name
    {"compilationRegionLogFileName=",              "L<filename>\twrite region logs to filename_compilation_seq_num",
         TR::Options::setStaticString,  (intptr_t)(&TR::Options::_compilationRegionLogFileName), 0, "P%s", NOT_IN_SUBSET},
    
@@ -1094,8 +1094,7 @@ TR::OptionTable OMR::Options::_feOptions[] = {
         TR::Options::setStaticNumeric, (intptr_t)&TR::Options::_maxCheckcastProfiledClassTests, 0, "F%d", NOT_IN_SUBSET},
    {"maxOnsiteCacheSlotForInstanceOf=", "R<nnn>\tnumber of onsite cache slots for instanceOf",
       TR::Options::setStaticNumeric, (intptr_t)&TR::Options::_maxOnsiteCacheSlotForInstanceOf, 0, "F%d", NOT_IN_SUBSET},
-   
-   // smallest memory usage to collect region, default = 16384
+   // Smallest memory usage in a region for a region to be collected, default = 16384
    {"minMemoryCollectRegionLog=", "D<nnn>\tsmallest memory usage to enable collection of region log of this compilation",
       TR::Options::setStaticNumeric, (intptr_t)&TR::Options::_minMemoryUsageCollectRegionLog, 16384, "F%d", NOT_IN_SUBSET},
    {"minOptLevelCollectRegionLog=", "D<nnn>\tsmallest level of optimization to enable collection of region log of this compilation",
