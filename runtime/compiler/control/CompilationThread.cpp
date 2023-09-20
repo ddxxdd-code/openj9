@@ -100,6 +100,7 @@
 #include "env/J9SegmentCache.hpp"
 #include "env/SystemSegmentProvider.hpp"
 #include "env/DebugSegmentProvider.hpp"
+#include "env/RegionMemoryLog.hpp"
 #if defined(J9VM_OPT_JITSERVER)
 #include "control/JITClientCompilationThread.hpp"
 #include "control/JITServerCompilationThread.hpp"
@@ -3957,6 +3958,21 @@ void TR::CompilationInfo::stopCompilationThreads()
          }
       }
 #endif /* defined(J9VM_OPT_JITSERVER) */
+   // check if there is any compilation logged in the global list, if so, dump the contents
+   if (TR::Options::_collectRegionMemoryLog && TR::Options::_compilationRegionMemoryLogFileName)
+      {
+      FILE *regionMemoryLogOutFile = J9::IO::fopen(TR::Options::_compilationRegionMemoryLogFileName, "w");
+      TR_ASSERT(regionMemoryLogOutFile != NULL, "error in opening file %s for dumping region logs\n", TR::Options::_compilationRegionMemoryLogFileName);
+      if (J9::SystemSegmentProvider::_globalCompilationsList)
+         {
+         for (auto &compilation : *J9::SystemSegmentProvider::_globalCompilationsList)
+            {
+            J9::IO::fprintf(regionMemoryLogOutFile, "Compilation %zu, Memory usage: %zu, Method: %s, Optimization Level: %zu\n", compilation.compilationNumber, compilation.totalMemoryUsed, compilation.methodName, compilation.optLevel);
+            RegionMemoryLog::printRegionMemoryLogList(compilation.regionMemoryLogList, regionMemoryLogOutFile);
+            }
+         }
+      J9::IO::fclose(regionMemoryLogOutFile);
+      }
    }
 
 void TR::CompilationInfo::stopCompilationThread(CompilationInfoPerThread* compInfoPT)
@@ -8430,6 +8446,15 @@ TR::CompilationInfoPerThreadBase::compile(J9VMThread * vmThread,
          TR::Options::getCmdLineOptions()->getOption(TR_EnableScratchMemoryDebugging) ?
             static_cast<TR::SegmentAllocator &>(debugSegmentProvider) :
             static_cast<TR::SegmentAllocator &>(defaultSegmentProvider);
+
+      // Scratch memory profiler only colllect memory usage when collection is set 
+      // and optimization level is high.
+      if (TR::Options::_collectRegionMemoryLog && entry->_optimizationPlan->getOptLevel() >= TR::Options::_minOptLevelCollectRegionMemoryLog)
+         {
+         regionSegmentProvider.setCollectRegionMemoryLog();
+         regionSegmentProvider.setMethodBeingCompiled(entry->getMethodDetails().name(), entry->_optimizationPlan->getOptLevel());
+         }
+
       TR::Region dispatchRegion(regionSegmentProvider, rawAllocator);
 
       // Initialize JITServer's trMemory with per-client persistent memory, since

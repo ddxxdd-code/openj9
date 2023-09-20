@@ -25,13 +25,30 @@
 
 #include <set>
 #include <deque>
+#include <stdio.h>
+#include <cstdint>
+#include <vector>
+#include "control/OptimizationPlan.hpp"
 #include "env/SegmentAllocator.hpp"
 #include "env/MemorySegment.hpp"
+#include "env/PersistentCollections.hpp"
 
 #include "env/J9SegmentAllocator.hpp"
 #include "env/TypedAllocator.hpp"
 #include "infra/ReferenceWrapper.hpp"
 #include "env/RawAllocator.hpp"
+
+class RegionMemoryLog;
+namespace TR { class Monitor; }
+
+struct CompilationInfo 
+   {
+   char *methodName;
+   TR_Hotness optLevel;
+   size_t compilationNumber;
+   size_t totalMemoryUsed;
+   RegionMemoryLog *regionMemoryLogList;
+   };
 
 namespace J9 {
 
@@ -45,21 +62,43 @@ public:
    size_t systemBytesAllocated() const throw();
    size_t regionBytesAllocated() const throw();
    size_t bytesAllocated() const throw();
+   // new counters added
+   size_t regionBytesInUse();
+   size_t regionRealBytesInUse();
    size_t allocationLimit() const throw();
    void setAllocationLimit(size_t allocationLimit);
    bool isLargeSegment(size_t segmentSize);
+   // set to collect in a segment provider
+   void setCollectRegionMemoryLog() { _recordRegions = true; }
+   void setMethodBeingCompiled(const char *methodName, TR_Hotness optLevel);
+   // Call on creation and destructor of region
+   int recordEvent() { return ++_timestamp; }
+   // Call in constructor of region to check if region should be allocated    
+   bool collectRegions() { return _recordRegions; }   
+   
+   // Head and tail for the double linked list for region memory logs.
+   void segmentProviderRegionMemoryLogListInsert(RegionMemoryLog *regionMemoryLog);
+   void segmentProviderRegionMemoryLogListRemove(RegionMemoryLog *regionMemoryLog);
+
+   // List of all compilations
+   static PersistentVector<struct CompilationInfo> *_globalCompilationsList;
+   static size_t _globalCompilationSequenceNumber;
+   static TR::Monitor *_regionMemoryLogListMonitor;
 
 private:
    size_t round(size_t requestedSize);
    ptrdiff_t remaining(const J9MemorySegment &memorySegment);
    TR::MemorySegment &allocateNewSegment(size_t size, TR::reference_wrapper<J9MemorySegment> systemSegment);
    TR::MemorySegment &createSegmentFromArea(size_t size, void * segmentArea);
+   void createRegionMemoryLogListMonitor();
 
    // _systemSegmentSize is only to be written once in the constructor
    size_t _systemSegmentSize;
    size_t _allocationLimit;
    size_t _systemBytesAllocated;
    size_t _regionBytesAllocated;
+   size_t _regionBytesInUse;
+   size_t _regionRealBytesInUse;
    J9::J9SegmentProvider & _systemSegmentAllocator;
 
    typedef TR::typed_allocator<
@@ -91,6 +130,16 @@ private:
    // and is to be released when the release method is invoked, e.g. when a TR::Region
    // goes out of scope. Thus _currentSystemSegment is not allowed to hold such segment.
    TR::reference_wrapper<J9MemorySegment> _currentSystemSegment;
+
+   // Flag for if we record regions
+   bool _recordRegions;
+   // Counters to track regions in a compilation
+   int _timestamp;
+   size_t _compilationSequenceNumber;
+   struct CompilationInfo _compilation;
+
+   RegionMemoryLog *_regionMemoryLogListHead;
+   RegionMemoryLog *_regionMemoryLogListTail;
 
    };
 

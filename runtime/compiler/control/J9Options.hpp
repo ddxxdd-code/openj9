@@ -431,6 +431,14 @@ class OMR_EXTENSIBLE Options : public OMR::OptionsConnector
 
    static char * _externalOptionStrings[ExternalOptions::TR_NumExternalOptions];
 
+   /*
+    * Control variables of scratch memory profiler
+    */
+   static bool       _collectRegionMemoryLog;
+   static char *     _compilationRegionMemoryLogFileName;
+   static uint64_t   _minMemoryUsageCollectRegionMemoryLog;
+   static uint32_t   _minOptLevelCollectRegionMemoryLog;
+
    static void  printPID();
 
 
